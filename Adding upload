@@ -1,0 +1,238 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+import os
+
+# Set plotting style
+sns.set_theme(style="whitegrid")
+
+# ==========================================
+# DATA LOADING
+# ==========================================
+file_name = 'agriculture_yield_dataset.csv'
+
+if not os.path.exists(file_name):
+    print(f"Error: '{file_name}' not found. Please ensure it is in the same folder.")
+    exit()
+
+df = pd.read_csv(file_name)
+
+print("="*50)
+print("PART A: UNDERSTANDING THE DATASET")
+print("="*50)
+
+# Q1. Dataset Overview
+print("\nQ1. Dataset Overview")
+print(f"Number of rows: {df.shape[0]}")
+print(f"Number of columns: {df.shape[1]}")
+print("Column names:", df.columns.tolist())
+print("\nFirst 10 records:")
+print(df.head(10))
+
+# Q2. Data Types and Missing Values
+print("\nQ2. Data Types and Missing Values")
+print("\nData Types:")
+print(df.dtypes)
+missing_values = df.isnull().sum()
+print("\nMissing values in each column:")
+print(missing_values)
+if missing_values.sum() == 0:
+    print("Conclusion: There are NO missing values in the dataset.")
+else:
+    print("Conclusion: There are missing values in the dataset.")
+
+# Q3. Descriptive Statistics
+print("\nQ3. Descriptive Statistics")
+num_df = df.select_dtypes(include=[np.number])
+print("\nSummary Statistics:")
+print(num_df.describe())
+
+highest_mean_feature = num_df.mean().idxmax()
+highest_std_feature = num_df.std().idxmax()
+print(f"\nFeature with the highest mean value: {highest_mean_feature} ({num_df.mean().max():.2f})")
+print(f"Feature with the highest standard deviation: {highest_std_feature} ({num_df.std().max():.2f})")
+
+
+print("\n" + "="*50)
+print("PART B: EXPLORATORY DATA ANALYSIS (EDA)")
+print("="*50)
+
+# Q4. Distribution Analysis (Histograms)
+print("\nQ4. Generating Histograms...")
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+sns.histplot(df['rainfall_mm'], kde=True, ax=axes[0,0], color='blue')
+axes[0,0].set_title('Rainfall Distribution')
+
+sns.histplot(df['temperature_c'], kde=True, ax=axes[0,1], color='orange')
+axes[0,1].set_title('Temperature Distribution')
+
+sns.histplot(df['fertilizer_kg'], kde=True, ax=axes[1,0], color='green')
+axes[1,0].set_title('Fertilizer Distribution')
+
+sns.histplot(df['yield_ton_per_hectare'], kde=True, ax=axes[1,1], color='red')
+axes[1,1].set_title('Yield Distribution')
+
+plt.tight_layout()
+plt.savefig('Q4_Distributions.png')
+plt.close()
+print("-> Saved plot as 'Q4_Distributions.png'")
+print("Observations:")
+print("- Rainfall appears distributed across a wide range, showing varied weather conditions.")
+print("- Temperature data likely shows a concentration around optimal growing conditions.")
+print("- Yield distribution shows the frequency of typical harvests versus exceptionally high/low harvests.")
+
+
+# Q5. Crop Type Analysis
+print("\nQ5. Crop Type Analysis")
+crop_counts = df['crop_type'].value_counts()
+print("\nNumber of records for each crop type:")
+print(crop_counts)
+
+plt.figure(figsize=(8, 5))
+sns.countplot(data=df, x='crop_type', order=crop_counts.index, palette='viridis')
+plt.title('Count of Records per Crop Type')
+plt.savefig('Q5_Crop_Type.png')
+plt.close()
+print("-> Saved plot as 'Q5_Crop_Type.png'")
+print(f"The crop that appears most frequently is: {crop_counts.idxmax()}")
+
+
+# Q6. Soil Type Analysis
+print("\nQ6. Soil Type Analysis")
+soil_counts = df['soil_type'].value_counts()
+print("\nFrequency of each soil type:")
+print(soil_counts)
+
+plt.figure(figsize=(8, 5))
+sns.countplot(data=df, x='soil_type', order=soil_counts.index, palette='magma')
+plt.title('Count of Records per Soil Type')
+plt.savefig('Q6_Soil_Type.png')
+plt.close()
+print("-> Saved plot as 'Q6_Soil_Type.png'")
+print(f"The soil type that is most common is: {soil_counts.idxmax()}")
+
+
+# Q7. Yield Distribution (Using Skewness and Z-score for accurate answers)
+print("\nQ7. Yield Distribution Analysis")
+plt.figure(figsize=(8, 5))
+sns.histplot(df['yield_ton_per_hectare'], kde=True, color='purple')
+plt.title('Yield (Ton per Hectare) Distribution')
+plt.savefig('Q7_Yield_Distribution.png')
+plt.close()
+print("-> Saved plot as 'Q7_Yield_Distribution.png'")
+
+skewness = df['yield_ton_per_hectare'].skew()
+is_normal = "Yes" if abs(skewness) < 0.5 else "No"
+print(f"Is the distribution approximately normal? {is_normal} (Skewness: {skewness:.2f})")
+
+# Check for outliers (values > 3 standard deviations from mean)
+z_scores = np.abs((df['yield_ton_per_hectare'] - df['yield_ton_per_hectare'].mean()) / df['yield_ton_per_hectare'].std())
+outliers = df[z_scores > 3]
+has_outliers = "Yes" if len(outliers) > 0 else "No"
+print(f"Are there any noticeable outliers? {has_outliers} (Found {len(outliers)} outliers based on 3-sigma rule)")
+
+
+# Q8. Scatter Plot Analysis
+print("\nQ8. Scatter Plot Analysis")
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+sns.scatterplot(data=df, x='rainfall_mm', y='yield_ton_per_hectare', ax=axes[0], color='blue')
+axes[0].set_title('Rainfall vs Yield')
+
+sns.scatterplot(data=df, x='fertilizer_kg', y='yield_ton_per_hectare', ax=axes[1], color='green')
+axes[1].set_title('Fertilizer vs Yield')
+
+plt.tight_layout()
+plt.savefig('Q8_Scatter_Plots.png')
+plt.close()
+print("-> Saved plot as 'Q8_Scatter_Plots.png'")
+
+corr_rain = df['rainfall_mm'].corr(df['yield_ton_per_hectare'])
+corr_fert = df['fertilizer_kg'].corr(df['yield_ton_per_hectare'])
+stronger_feature = "rainfall_mm" if abs(corr_rain) > abs(corr_fert) else "fertilizer_kg"
+print(f"Correlation: Rainfall ({corr_rain:.3f}) vs Fertilizer ({corr_fert:.3f})")
+print(f"Based on correlation, '{stronger_feature}' has a stronger relationship with yield.")
+
+
+# Q9. Correlation Analysis
+print("\nQ9. Correlation Analysis")
+corr_matrix = num_df.corr()
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+plt.title('Correlation Heatmap')
+plt.savefig('Q9_Correlation_Heatmap.png')
+plt.close()
+print("-> Saved plot as 'Q9_Correlation_Heatmap.png'")
+
+# Get top 3 absolute correlations with yield (excluding yield itself)
+top_3_corr = corr_matrix['yield_ton_per_hectare'].drop('yield_ton_per_hectare').abs().sort_values(ascending=False).head(3)
+print("\nTop three features most correlated with crop yield:")
+print(top_3_corr)
+
+
+# Q10. Group-Based Analysis
+print("\nQ10. Group-Based Analysis")
+avg_yield_crop = df.groupby('crop_type')['yield_ton_per_hectare'].mean()
+avg_yield_soil = df.groupby('soil_type')['yield_ton_per_hectare'].mean()
+
+print("\nAverage yield for each crop type:")
+print(avg_yield_crop)
+print("\nAverage yield for each soil type:")
+print(avg_yield_soil)
+
+print(f"\nCrop type with highest average yield: {avg_yield_crop.idxmax()} ({avg_yield_crop.max():.2f})")
+print(f"Soil type with highest average yield: {avg_yield_soil.idxmax()} ({avg_yield_soil.max():.2f})")
+
+
+print("\n" + "="*50)
+print("PART C: DATA PREPARATION")
+print("="*50)
+
+# Q11. Feature Encoding
+print("\nQ11. Feature Encoding")
+categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
+print(f"Identified categorical columns: {categorical_cols}")
+
+# Convert using One-Hot Encoding
+df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
+print("\nFirst five rows of the transformed dataset:")
+print(df_encoded.head(5))
+
+# Q12. Feature Selection
+print("\nQ12. Feature Selection")
+X = df_encoded.drop('yield_ton_per_hectare', axis=1)
+y = df_encoded['yield_ton_per_hectare']
+print("Input features (X) have been separated.")
+print("Target variable (y) is specified as: 'yield_ton_per_hectare'")
+
+
+print("\n" + "="*50)
+print("PART D: MACHINE LEARNING")
+print("="*50)
+
+# Q13. Train-Test Split
+print("\nQ13. Train-Test Split")
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
+print("Dataset split into 80% Training and 20% Testing Data.")
+print(f"Shape of X_train: {X_train.shape}")
+print(f"Shape of X_test: {X_test.shape}")
+print(f"Shape of y_train: {y_train.shape}")
+print(f"Shape of y_test: {y_test.shape}")
+
+# Q14. Linear Regression Model
+print("\nQ14. Linear Regression Model")
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+
+print(f"Model Intercept: {lr_model.intercept_:.4f}")
+print("\nModel Coefficients:")
+coef_dict = dict(zip(X.columns, lr_model.coef_))
+for feature, coef in coef_dict.items():
+    print(f"{feature}: {coef:.4f}")
+
+highest_positive_feature = max(coef_dict, key=coef_dict.get)
+print(f"\nFeature with the highest positive coefficient: '{highest_positive_feature}' (Coefficient value: {coef_dict[highest_positive_feature]:.4f})")
+print("\nAssignment execution completed successfully!")
